@@ -84,12 +84,13 @@ mechanics matter:
 - **A private GitHub repo as a sink** (client opens an issue via the
   API) needs a token with write scope on the client — same exposure
   problem, worse (a leaked token can do more than a webhook).
-- **The only clean version is server-side**: the client POSTs to a
-  small endpoint we run; that endpoint holds the Discord webhook / DB
-  credentials and is the single place data lands. That's real
-  infrastructure (a host, TLS, uptime, logging discipline, a privacy
-  policy naming it). Not hard, but it's a real thing to stand up, not a
-  one-liner.
+- **The clean version keeps secrets off the client.** Two ways: (a) a
+  small endpoint we run that holds the credentials, or (b) a
+  Backend-as-a-Service whose client key is *designed* to be public and
+  whose server-side rules constrain it (Supabase anon key + row-level
+  security). Option (b) is much less infrastructure — see §3.5. Either
+  way it still needs TLS, a retention policy, and a privacy policy
+  naming where data lands.
 - **Interim, no-infrastructure option**: don't transmit at all. Signup
   stays local. If the owner wants visibility, add an explicit,
   opt-in `hq export-signup` command the *user* runs that prints a
@@ -100,6 +101,40 @@ Recommendation: **no automatic phone-home until there's a server-side
 endpoint and a published privacy policy.** Until then, either (b)
 anonymous count via GitHub's own release-download stats (already
 available, we collect nothing ourselves) or the opt-in manual export.
+
+### 3.5 So — Supabase or something, not GitHub? Yes. Concrete options.
+
+GitHub is a code host, not a data backend — there is no way to make a
+public client write to it without shipping a credential that leaks. A
+**Backend-as-a-Service (BaaS)** solves the exact problem: the client
+holds only a *public* key, and server-side rules decide what that key
+can do. All of the following have a real free tier; all are
+open-source or self-hostable so we are not locked in.
+
+| Service | Free tier (verify current limits) | What it gives us | Cost/effort | Notes |
+|---|---|---|---|---|
+| **Supabase** (recommended) | ~2 projects, 500 MB Postgres, 50k monthly active auth users, social + email auth, edge functions; projects pause after ~1 wk idle on free | Postgres + auto REST/realtime + **Row Level Security** + **Auth with email confirmation & magic links** + storage | Low — mostly config | The client ships the **anon key, which is designed to be public**; an *insert-only* RLS policy on a `signups` table lets anyone submit but nobody read. Also covers the *account system itself* (§ SECURITY.md §5), not just the ping. Open-source, self-hostable later. US/EU region choice. Needs a DPA + privacy-policy mention. |
+| **PocketBase** | Free software; you run it (a $4–6/mo VPS or a free Fly.io/Render instance) | Single Go binary: SQLite + REST + auth + admin UI + file storage | Low-medium — you own a small box | Cheapest long-term, full data ownership, trivial backups (one file). No vendor at all. You handle uptime + TLS (Caddy/Fly does TLS for you). |
+| **Firebase / Firestore** (Google) | Generous (Spark plan): 1 GiB store, 50k reads/20k writes per day, email/OAuth auth | Similar to Supabase | Low | Google lock-in, harder to self-host, data in US by default. Same public-config-key + security-rules model. |
+| **Cloudflare** (Workers + D1 + Turnstile) | 100k requests/day, D1 SQLite 5 GB, free CAPTCHA (Turnstile) | You write a ~30-line Worker as the intake endpoint; D1 stores rows | Medium — more assembly | Best if we want a *minimal* endpoint and strong built-in bot protection, and don't need a full auth system yet. |
+| **Airtable / Google Forms** | Yes | A table / form that collects a beta **waitlist** | Trivial | Fine for "email us to get early access" only. **Not** an auth backend, and the data still sits in a US SaaS you must disclose. |
+
+**What this does *not* remove:** wherever the data lands, if it
+includes an email or IP it's still personal data — we still need the
+privacy policy, a lawful basis, a data-processing agreement with the
+provider, a stated retention period, and a deletion path. BaaS makes
+the *plumbing* safe; it doesn't make the *obligations* go away.
+
+**Concrete recommendation:**
+- **Phase B/C backend: Supabase.** One service covers the account
+  system, email verification, and the signup record, with a
+  public-safe client key. Start with an `signups` table + insert-only
+  RLS + Turnstile/hCaptcha in front to stop mass fake inserts.
+- Keep **PocketBase** as the fallback/exit plan if we ever want to
+  pull everything onto our own box — the data model ports cleanly.
+- **Do not** use a Discord webhook or GitHub token in the client, ever.
+  A Supabase edge function or database webhook can post to Discord
+  *server-side* if the owner still wants the ping.
 
 ---
 
@@ -152,8 +187,9 @@ at level 1, move to level 2 before any stranger-facing launch.
    linked from the installer and the signup screen.
 2. A **lawful basis** chosen per field (consent for email/marketing;
    legitimate interest or contract for the account itself).
-3. A **server-side intake endpoint** we control (TLS, access-logged,
-   credentials not in any client).
+3. A **backend** we control — Supabase (recommended, §3.5) or a small
+   self-run endpoint — with TLS, access logs, credentials never in any
+   client, and bot protection (Turnstile/hCaptcha) on the signup path.
 4. A **deletion + access path** (`hq account delete` that reaches the
    endpoint; a documented manual process as backup) — GDPR/CCPA give
    users this right and we must be able to honor it.
