@@ -38,3 +38,7 @@ install dir and the launcher command.
 
 Windows/macOS build legs come later (the component build scripts
 already carry macOS guards).
+
+## Data & legal
+
+See [`tearit-legal.md`](tearit-legal.md) — how user tracking / personal-data collection should be implemented (phased), what is lawful to collect, the email-validation options, and why there is no automatic phone-home yet. Current builds send nothing except the GitHub payload download.
