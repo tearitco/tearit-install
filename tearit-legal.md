@@ -136,6 +136,31 @@ the *plumbing* safe; it doesn't make the *obligations* go away.
   A Supabase edge function or database webhook can post to Discord
   *server-side* if the owner still wants the ping.
 
+### 3.6 Is Discord itself a viable data store? (short: no — it's a notifier)
+
+People do abuse Discord as free storage (bots that stash blobs in
+channels/attachments). For *our* case — signups, emails, account data —
+it is the wrong tool:
+
+- **No query / no structured deletion.** "Delete every record for this
+  email" (a legal right) means scrolling a channel deleting messages by
+  hand. Not a system of record.
+- **Not a data processor you can contract with.** No DPA, no defined
+  storage region, no security attestation for *your users'* PII.
+  Storing third-party personal data in a Discord channel likely breaks
+  Discord's own ToS and gives you no compliance story.
+- **Access control is coarse.** Anyone in the channel — a future mod, a
+  leaked invite — sees every record.
+- **Rate-limited, no durability guarantee.** Fine to drop a ping, not
+  fine to lose a signup.
+
+**Where Discord *is* good:** a human-facing **ops alert** — "🎉 new
+signup (#128)", "build failed", "store submission pending review" —
+posted **server-side**, carrying a count or an opaque id, **never** the
+person's email/IP. Treat it like a Slack/email notification, not a
+database. The real record lives in Supabase/PocketBase; Discord just
+tells you something happened.
+
 ---
 
 ## 4. Email validation — options, if/when we collect it
