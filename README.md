@@ -42,3 +42,7 @@ already carry macOS guards).
 ## Data & legal
 
 See [`tearit-legal.md`](tearit-legal.md) — how user tracking / personal-data collection should be implemented (phased), what is lawful to collect, the email-validation options, and why there is no automatic phone-home yet. Current builds send nothing except the GitHub payload download.
+
+## Where it installs / what it adds
+
+See [`install-faq.md`](install-faq.md) — install location (`~/<product>/`), why the directory you run the command from does not matter, the auto-added `~/.local/bin/<product>` command word and the PATH caveat, multiple installs, uninstall, and every env knob.
