@@ -46,3 +46,7 @@ See [`tearit-legal.md`](tearit-legal.md) — how user tracking / personal-data c
 ## Where it installs / what it adds
 
 See [`install-faq.md`](install-faq.md) — install location (`~/<product>/`), why the directory you run the command from does not matter, the auto-added `~/.local/bin/<product>` command word and the PATH caveat, multiple installs, uninstall, and every env knob.
+
+## Uninstall
+
+`tearit-hq uninstall` (or `sh ~/tearit-hq/start.sh uninstall`, or `curl … uninstall.sh | sh -s -- tearit-hq`). Details in [`install-faq.md`](install-faq.md).
